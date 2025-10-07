@@ -10,7 +10,7 @@ COPY ./insecure-bank-master .
 RUN mkdir -p /security/reports/
 
 RUN apt-get update && \
-    apt-get install -y wget apt-transport-https lsb-release gnupg default-jdk curl unzip python3 python3-pip python3.12-venv && \
+    apt-get install -y cloc wget apt-transport-https lsb-release gnupg default-jdk curl unzip python3 python3-pip python3.12-venv && \
     python3 -m venv /venv/
 
 RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -

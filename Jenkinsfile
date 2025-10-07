@@ -111,7 +111,7 @@ pipeline {
   }
   post {
     always {
-      archiveArtifacts artifacts: "**/*.md, *.md",
+      archiveArtifacts artifacts: "**/*.md, *.md,  *.json",
           allowEmptyArchive: true,
           fingerprint: true,
           onlyIfSuccessful: true

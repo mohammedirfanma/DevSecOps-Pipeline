@@ -1,0 +1,168 @@
+# Synopsys IO Azure Pipeline
+trigger:
+- master
+
+jobs:
+  - job: Synopsys_IO_Scan
+    pool:
+      vmImage: ubuntu-latest
+
+    variables:
+      #IO details
+      IO_SERVER_URL: "https://io11.codedx.synopsys.com/api/ioiq"
+      SYNOPSYS_AZURE_TOOLS_REPO: "https://github.com/synopsys-sig-community/synopsys-azure-tools"
+      PERSONA: developer
+      RELEASE: minor
+      MANIFEST_TYPE: yml
+      PROJECT_NAME: "Irfa-Test"
+      #SCM details
+      SCM_TYPE: github
+      SCM_OWNER: mohammedirfanma
+      SCM_REPO_NAME: insecure-bank
+      SCM_BRANCH_NAME: master
+      GITHUB_USERNAME: mohammedirfanma
+      #Blackduck details
+      BLACKDUCK_SERVER_URL: "https://testing.blackduck.synopsys.com"
+      BLACKDUCK_PROJECT_NAME: "my-insecure-bank"
+      BD_PROJECT_NAME: "my-insecure-bank"
+      BLACKDUCK_PROJECT_VERSION: 1.0
+      #Polaris details
+      POLARIS_SERVER_URL: "https://sipse.polaris.synopsys.com"
+      POLARIS_PROJECT_NAME: "aws-insecure-bank"
+      POLARIS_BRANCH_NAME: origin/master
+      #CodeDX details
+      CODEDX_SERVER_URL: "https://poc11.codedx.synopsys.com/codedx"
+      CODEDX_PROJECT_ID: 1
+
+    steps:
+    - task: Bash@3
+      displayName: Synopsys IO Stage
+      name: 'Stage_IO'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Trigger IO"
+          wget "https://raw.githubusercontent.com/synopsys-sig/io-artifacts/2021.12.0.12-alpha/prescription.sh"
+          chmod +x prescription.sh
+          echo $(IO_SERVER_URL)
+          echo $(IO_ACCESS_TOKEN)
+          ./prescription.sh --release.type="$(RELEASE)" --persona="$(PERSONA)" --stage="IO" --io.url="$(IO_SERVER_URL)" --io.token="$(IO_ACCESS_TOKEN)" --workflow.url="$(WORKFLOW_ENGINE_SERVER_URL)" \
+            --project.name="$(PROJECT_NAME)" --scm.type="$(SCM_TYPE)" --scm.owner="$(SCM_OWNER)" --scm.repo.name="$(SCM_REPO_NAME)" --scm.branch.name="$(SCM_BRANCH_NAME)" --github.username="$(GITHUB_USERNAME)" \
+            --polaris.project.name="$(POLARIS_PROJECT_NAME)" --polaris.url="$(POLARIS_SERVER_URL)" \
+            --blackduck.project.name="$(BLACKDUCK_PROJECT_NAME)" --blackduck.url="$(BLACKDUCK_SERVER_URL)" \
+            --codedx.url="$(CODEDX_SERVER_URL)" --codedx.project.id="$(CODEDX_PROJECT_ID)" --codedx.api.key="$(CODEDX_API_KEY)"\
+            ${ADDITIONALARGS}
+          export IS_SAST_ENABLED=$(jq -r '.security.activities.sast.enabled' result.json)
+          export IS_SCA_ENABLED=$(jq -r '.security.activities.sca.enabled' result.json)
+          echo "##vso[task.setvariable variable=IS_SAST_ENABLED]$(jq -r '.security.activities.sast.enabled' result.json)"
+          echo "##vso[task.setvariable variable=IS_SCA_ENABLED]$(jq -r '.security.activities.sca.enabled' result.json)"
+          echo "================================ Raw IO Prescription ====================================="
+          echo "$(cat result.json)"
+          rm -rf synopsys-io.yml
+          rm -rf synopsys-io.json
+          echo "================================ AST IO Prescription ====================================="
+          echo "Is SAST Enabled - ${IS_SAST_ENABLED}"
+          echo "Is SCA Enabled - ${IS_SCA_ENABLED}"
+          if [ "$(PERSONA)" == "devsecops" ]; then
+              echo "==================================== IO Risk Score ======================================="
+              echo "Buisness Criticality Score - $(jq -r '.riskScoreCard.bizCriticalityScore' result.json)"
+              echo "Data Class Score - $(jq -r '.riskScoreCard.dataClassScore' result.json)"
+              echo "Access Score - $(jq -r '.riskScoreCard.accessScore' result.json)"
+              echo "Open Vulnerability Score - $(jq -r '.riskScoreCard.openVulnScore' result.json)"
+              echo "Change Significance Score - $(jq -r '.riskScoreCard.changeSignificanceScore' result.json)"
+              export bizScore=$(jq -r '.riskScoreCard.bizCriticalityScore' result.json | cut -d'/' -f2)
+              export dataScore=$(jq -r '.riskScoreCard.dataClassScore' result.json | cut -d'/' -f2)
+              export accessScore=$(jq -r '.riskScoreCard.accessScore' result.json | cut -d'/' -f2)
+              export vulnScore=$(jq -r '.riskScoreCard.openVulnScore' result.json | cut -d'/' -f2)
+              export changeScore=$(jq -r '.riskScoreCard.changeSignificanceScore' result.json | cut -d'/' -f2)
+              echo -n "Total Score - " && echo "$bizScore + $dataScore + $accessScore + $vulnScore + $changeScore" | bc
+          fi
+    
+    - task: Bash@3
+      displayName: Static Analysis With Polaris
+      name: 'SAST_With_Polaris'
+      condition: eq(variables['IS_SAST_ENABLED'], 'true')
+      inputs:
+        targetType: 'inline'
+        script: |
+          export POLARIS_SERVER_URL=$(POLARIS_SERVER_URL)
+          export POLARIS_ACCESS_TOKEN=$(POLARIS_ACCESS_TOKEN)
+          wget -q $(POLARIS_SERVER_URL)/api/tools/polaris_cli-linux64.zip
+          unzip -j polaris_cli-linux64.zip -d /tmp
+          /tmp/polaris analyze -w
+      
+    - task: Bash@3
+      displayName: Software Composition Analysis with Blackduck
+      name: 'SCA_With_BlackDuck'
+      condition: eq(variables['IS_SCA_ENABLED'], 'true')
+      inputs:
+        targetType: 'inline'
+        script: |
+          pwd && wget "https://detect.synopsys.com/detect.sh" && chmod +x detect.sh
+          ./detect.sh --blackduck.url="$(BLACKDUCK_SERVER_URL)" --blackduck.api.token="$(BLACKDUCK_ACCESS_TOKEN)" \
+            --detect.tools="SIGNATURE_SCAN,DETECTOR" --detect.project.name="$(BD_PROJECT_NAME)" --detect.project.version.name="$(BLACKDUCK_PROJECT_VERSION)" \
+            --detect.code.location.name="$(BD_PROJECT_NAME)-$(BLACKDUCK_PROJECT_VERSION)" --logging.level.com.synopsys.integration="INFO" $ADDITIONAL_BD_ARGS
+    - task: Bash@3
+      displayName: Synopsys IO Workflow Stage
+      name: 'Stage_Workflow'
+      condition: or(eq(variables['IS_SAST_ENABLED'], 'true'), eq(variables['IS_SCA_ENABLED'], 'true'))
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Trigger IO Workflow"
+          wget "https://github.com/synopsys-sig/io-artifacts/releases/download/2021.12.0.12-alpha/WorkflowClient.jar"
+          chmod +x WorkflowClient.jar
+          ./prescription.sh --stage="WORKFLOW" --io.url=$(IO_SERVER_URL) --io.token=$(IO_ACCESS_TOKEN) --workflow.url=$(WORKFLOW_ENGINE_SERVER_URL) --msteams.webhook.url=$(TEAMS_WEBHOOK_URL) \
+          --polaris.project.name="$(POLARIS_PROJECT_NAME)" --polaris.token="$(POLARIS_ACCESS_TOKEN)" --polaris.url="$(POLARIS_SERVER_URL)" \
+          --blackduck.project.name="$(BLACKDUCK_PROJECT_NAME)" --blackduck.api.token="$(BLACKDUCK_ACCESS_TOKEN)" --blackduck.url="$(BLACKDUCK_SERVER_URL)" \
+          --codedx.url="$(CODEDX_SERVER_URL)" --codedx.api.key="$(CODEDX_API_KEY)" --codedx.project.id="$(CODEDX_PROJECT_ID)" \
+          --IS_SAST_ENABLED=$(IS_SAST_ENABLED) --IS_SCA_ENABLED=$(IS_SCA_ENABLED) --IS_DAST_ENABLED=$(IS_DAST_ENABLED)
+          echo "Triggering WorkFlowEngine "
+          if [ $(MANIFEST_TYPE) == "yml" ]; then
+              java -jar WorkflowClient.jar --workflowengine.url=$WORKFLOW_ENGINE_SERVER_URL --io.manifest.path=synopsys-io.yml
+          elif [ $(MANIFEST_TYPE) == "json" ]; then
+              java -jar WorkflowClient.jar --workflowengine.url=$WORKFLOW_ENGINE_SERVER_URL --io.manifest.path=synopsys-io.json
+          fi
+          rm -rf synopsys-io.yml
+          rm -rf synopsys-io.json
+          echo "========================== IO WorkflowEngine Summary ============================" 
+          echo "Breaker Status - $(jq -r '.breaker.status' wf-output.json)"
+          echo "CodeDX Score - $(jq -r '.breaker.criteria[2].risk_score' wf-output.json)"
+    - task: CopyFiles@2
+      displayName: Copy Sarif Report
+      name: 'Copy_Sarif_Report'
+      condition: eq(variables['IS_SAST_ENABLED'], 'true')
+      inputs:
+        Contents: 'workflowengine-results.sarif'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Sarif Report
+      name: 'Publish_Sarif_Report'
+      condition: eq(variables['IS_SAST_ENABLED'], 'true')
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'CodeAnalysisLogs'
+        publishLocation: 'Container'
+        
+    - task: UsePythonVersion@0
+      name: pyTools
+      displayName: Get Python Interpreter
+      condition: eq(variables['IS_SAST_ENABLED'], 'true')
+      inputs:
+        versionSpec: '3.7'
+        addToPath: true
+
+    - script: $(pyTools.pythonLocation)/bin/pip install --upgrade pandas requests jsonapi_requests azure-devops
+      displayName: Install Python Module Dependencies
+      condition: eq(variables['IS_SAST_ENABLED'], 'true')
+
+    - script: |
+            git clone -q --depth 1 $SYNOPSYS_AZURE_TOOLS_REPO
+            $(pyTools.pythonLocation)/bin/python synopsys-azure-tools/azure-polaris-issues-tool.py --url $POLARIS_URL --token $POLARIS_ACCESS_TOKEN --new --az-work-items --project "$(POLARIS_PROJECT_NAME)" --branch "$(POLARIS_BRANCH_NAME)"
+      displayName: Create Work Items for New Issues
+      condition: eq(variables['IS_SAST_ENABLED'], 'true')
+      env:
+        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+        POLARIS_URL: $(POLARIS_SERVER_URL)
+        POLARIS_ACCESS_TOKEN: $(POLARIS_ACCESS_TOKEN)

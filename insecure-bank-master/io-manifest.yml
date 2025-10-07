@@ -1,0 +1,82 @@
+application:
+  projectName: <<PROJECT_NAME>>
+  release: <<RELEASE_TYPE>>
+environment:
+  scm: <<SCM_TYPE>>
+  scmOwner: <<SCM_OWNER>>
+  scmRepositoryName: <<SCM_REPO_NAME>>
+  scmBranchName: <<SCM_BRANCH_NAME>>
+  githubApiUrl: "https://api.github.com/repos/"
+  githubUsername: <<GITHUB_USERNAME>>
+  githubToken: "<<GITHUB_ACCESS_TOKEN>>"
+  enableJira: false
+connectors:
+- connector_name: "msteams"
+  fields:
+    webhook_url: "<<MSTEAMS_WEBHOOK_URL>>" 
+- connector_name: "slack"
+  fields:
+    channelidentifier: "C01RF6ALQ49"
+    bearertoken: "<<SLACK_TOKEN>>"
+- connector_name: "github"
+  fields:
+    file_path: "workflowengine-results.sarif"
+- connector_name: "jira"
+  fields:
+    username: "sig-rnd-io-testuser@synopsys.com"
+    issuetype: "Bug"
+    projectkey: "AYI"
+    assignee: "sig-rnd-io-testuser@synopsys.com"
+    url: "<<JIRA_API_URL>>"
+    authtoken: "<<JIRA_AUTH_TOKEN>>"
+buildbreaker:
+- activityname: "sast"
+  status:
+  - "new"
+  - "open"
+  overallseverity:
+  - "high"
+  categories:
+  - name: "sql injection"
+    severity: "high"
+  - name: "cross-site scripting"
+    severity: "high"
+- activityname: "sca"
+  status:
+  - "new"
+  overallseverity:
+  - "high"
+  categories:
+  - name: "cve-2015-2119"
+    severity: "medium"
+- activityname: codedx
+  min_risk_score: 80
+tool_information:
+- tool_name: "polaris"
+  fields:
+    project_name: <<POLARIS_PROJECT_NAME>>
+    instance_url: <<POLARIS_SERVER_URL>>
+    auth_token: "<<POLARIS_ACCESS_TOKEN>>"
+  enabled: "<<IS_SAST_ENABLED>>"
+- tool_name: "coverity"
+  fields:
+    instance_url: "<<COVERITY_SERVER_URL>>"
+    file_path: "coverity-results.json"
+    username: "<<COVERITY_USERNAME>>"
+    password: "<<COVERITY_PASSWORD>>"
+    stream: "<<COVERITY_STREAM>>"
+  enabled: false
+- tool_name: "sigma"
+  fields:
+    output_file: "sigma-results.json"
+  enabled: false
+- tool_name: "blackduck"
+  fields:
+    project_name: <<BLACKDUCK_PROJECT_NAME>>
+    instance_url: <<BLACKDUCK_SERVER_URL>>
+    auth_token: "<<BLACKDUCK_ACCESS_TOKEN>>"
+  enabled: "<<IS_SCA_ENABLED>>"
+codedx:
+  instance_url: <<CODEDX_SERVER_URL>>
+  api_key: <<CODEDX_API_KEY>>
+  project_id: <<CODEDX_PROJECT_ID>>

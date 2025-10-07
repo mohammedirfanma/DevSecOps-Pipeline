@@ -2,15 +2,8 @@ pipeline {
   agent {        
     dockerfile {
         filename 'Dockerfile.SecOps'
-        // args '-v $HOME/.m2:/root/.m2'
         }
     }
-  environment {
-    // COP_SERVER_URL = credentials('server-url-cop')
-    // COP_ACCESS_TOKEN = credentials('access-token-cop')
-    // SRM_SERVER_URL = credentials('server-url-srm')
-    // SRM_ACCESS_TOKEN = credentials('access-token-srm')
-  }
   parameters {
       stashedFile 'source.zip'
       string(name: 'project_name', defaultValue: 'noname', description: '(Required) Provide a name for the project (no spaces in file-name)')

@@ -17,7 +17,8 @@ RUN update-ca-certificates
 RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key |  gpg --dearmor -o /usr/share/keyrings/trivy.gpg
 RUN echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/trivy.list && \
     apt-get update
-RUN apt-get install -y trivy
+RUN apt-get install -y trivy docker.io
+
 
 RUN /venv/bin/pip install semgrep 
 
@@ -28,4 +29,6 @@ RUN curl -s -L https://github.com/dependency-check/DependencyCheck/releases/down
 # RUN tar -xzf /security/zap.tar.gz
 #RUN /security/ZAP_2.16.1/zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.disablekey=false -config api.key=12345 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true
 
-ENV PATH="/venv/bin:/security/dependency-check/bin:$PATH"
+ENV PATH="/venv/bin:/security/dependency-check/bin:$PATH" 
+
+USER jenkins

@@ -30,5 +30,3 @@ RUN curl -s -L https://github.com/dependency-check/DependencyCheck/releases/down
 #RUN /security/ZAP_2.16.1/zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.disablekey=false -config api.key=12345 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true
 
 ENV PATH="/venv/bin:/security/dependency-check/bin:$PATH" 
-
-USER jenkins

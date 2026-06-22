@@ -5,7 +5,7 @@ pipeline {
         }
     }
   parameters {
-      stashedFile 'source.zip'
+      file 'source.zip'
       string(name: 'project_name', defaultValue: 'noname', description: '(Required) Provide a name for the project (no spaces in file-name)')
   }
   stages {

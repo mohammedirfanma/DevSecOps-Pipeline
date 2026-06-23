@@ -17,8 +17,7 @@ pipeline {
           script {
             // WORKAROUND: Expressly fetch the native file from the master cache directory
             // This copies it directly into the running Docker execution path workspace
-            sh "cp \${WORKSPACE}/../\${JOB_NAME##*/}/source.zip ./source.zip || true"
-
+            sh "cp \${WORKSPACE}/../\${JOB_NAME##*/}/source.zip ./source.zip || true"     
             sh '''
               set +x
               pwd && ls -la

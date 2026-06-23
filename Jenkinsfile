@@ -2,58 +2,60 @@ pipeline {
   agent {        
     dockerfile {
         filename 'Dockerfile.SecOps'
-        reuseNode true
+        // CRITICAL: Mounts the underlying master workspace (holding your upload) directly into the container
+        reuseNode true 
     }
   }
   parameters {
-      // FIX 1: Change 'file' to 'base64File' for declarative support
-      base64File name: 'source.zip', description: 'Upload your source zip file'
+      // Reverted to native 'file' parameter since base64File is missing on your server
+      file(name: 'source.zip', description: 'Upload your source zip file')
       string(name: 'project_name', defaultValue: 'noname', description: '(Required) Provide a name for the project (no spaces in file-name)')
   }
   stages {
     stage('Initialize') {
       steps {
-          // FIX 2: Wrap execution in withFileParameter to physically materialize the zip file
-          withFileParameter('source.zip') {
-              script {
-                sh '''
-                  set +x
-                  pwd && ls -la
-                  cat /etc/*release >> agent-info.md
-                  datetime=`date +"%Y-%m-%dT%H:%M:%SZ"`
-                  echo "$datetime" >> agent-info.md
-                  mkdir archive
-                  mv agent-info.md ./archive/agent-info.md
+          script {
+            // WORKAROUND: Expressly fetch the native file from the master cache directory
+            // This copies it directly into the running Docker execution path workspace
+            sh "cp \${WORKSPACE}/../\${JOB_NAME##*/}/source.zip ./source.zip || true"
 
-                  if [ -z "${project_name}" ]; then
-                    echo "No project name provided. Using: no-name-$datetime"
-                    project_name="no-name-$datetime"
-                  else
-                    echo "Project Name: ${project_name}"
-                  fi
-                  echo "${project_name}">projectName.txt
+            sh '''
+              set +x
+              pwd && ls -la
+              cat /etc/*release >> agent-info.md
+              datetime=`date +"%Y-%m-%dT%H:%M:%SZ"`
+              echo "$datetime" >> agent-info.md
+              mkdir archive
+              mv agent-info.md ./archive/agent-info.md
 
-                  # This will now successfully evaluate to true!
-                  if [ -f "source.zip" ] && [ -s "source.zip" ]; then
-                    echo 'Source zip found!'
-                    echo false>skipScan.txt
-                    mkdir code
-                    unzip source.zip -d ./code/
-                  else
-                    echo 'No source zip found!'
-                    echo true>skipScan.txt
-                  fi
-                '''
-                
-                def skipScanFile = readFile(file: "./skipScan.txt")
-                def projectNameFile = readFile(file: "./projectName.txt")
+              if [ -z "${project_name}" ]; then
+                echo "No project name provided. Using: no-name-$datetime"
+                project_name="no-name-$datetime"
+              else
+                echo "Project Name: ${project_name}"
+              fi
+              echo "${project_name}">projectName.txt
 
-                skipScanFile = skipScanFile.trim()
-                projectNameFile = projectNameFile.trim()
+              # This block will now successfully catch your uploaded file!
+              if [ -f "source.zip" ] && [ -s "source.zip" ]; then
+                echo 'Source zip found!'
+                echo false>skipScan.txt
+                mkdir code
+                unzip source.zip -d ./code/
+              else
+                echo 'No source zip found!'
+                echo true>skipScan.txt
+              fi
+            '''
+            
+            def skipScanFile = readFile(file: "./skipScan.txt")
+            def projectNameFile = readFile(file: "./projectName.txt")
 
-                env.skipScanEnv = skipScanFile
-                env.projectNameEnv = projectNameFile
-              }
+            skipScanFile = skipScanFile.trim()
+            projectNameFile = projectNameFile.trim()
+
+            env.skipScanEnv = skipScanFile
+            env.projectNameEnv = projectNameFile
           }
       }
     }

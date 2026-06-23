@@ -18,7 +18,7 @@ pipeline {
               cat /etc/*release >> agent-info.md
               datetime=`date +"%Y-%m-%dT%H:%M:%SZ"`
               echo "$datetime" >> agent-info.md
-              mkdir archive
+              mkdir -p archive
               mv agent-info.md ./archive/agent-info.md
 
               if [ -z "${project_name}" ]; then

@@ -1,0 +1,11 @@
+FROM jenkins/jenkins:lts
+
+# 1. Temporarily switch to administrator to install tools
+USER root
+
+# 2. Install the lightweight Linux Docker command line client
+RUN apt-get update && \
+    apt-get install -y docker.io
+
+# 3. Switch back to the standard safe user
+USER jenkins

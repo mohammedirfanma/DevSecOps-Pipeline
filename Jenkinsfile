@@ -2,18 +2,16 @@ pipeline {
   agent {        
     dockerfile {
         filename 'Dockerfile.SecOps'
-        }
     }
+  }
   parameters {
-      file 'source.zip'
+      file name: 'source.zip', description: 'Upload source zip file'
       string(name: 'project_name', defaultValue: 'noname', description: '(Required) Provide a name for the project (no spaces in file-name)')
   }
   stages {
-    stage('Initializa') {
+    stage('Initialize') { 
       steps {
-          cleanWs()
-          script{
-            unstash 'source.zip'
+          script {
             sh '''
               set +x
               pwd && ls -la
@@ -41,18 +39,15 @@ pipeline {
                 echo true>skipScan.txt
               fi
             '''
-            script {
-              def skipScanFile = readFile(file: "./skipScan.txt")
-              def projectNameFile = readFile(file: "./projectName.txt")
+            
+            def skipScanFile = readFile(file: "./skipScan.txt")
+            def projectNameFile = readFile(file: "./projectName.txt")
 
+            skipScanFile = skipScanFile.trim()
+            projectNameFile = projectNameFile.trim()
 
-              skipScanFile = skipScanFile.trim()
-              projectNameFile = projectNameFile.trim()
-
-
-              env.skipScanEnv = skipScanFile
-              env.projectNameEnv = projectNameFile
-            }
+            env.skipScanEnv = skipScanFile
+            env.projectNameEnv = projectNameFile
           }
       }
     }

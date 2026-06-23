@@ -19,7 +19,6 @@ RUN echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.git
     apt-get update
 RUN apt-get install -y trivy docker.io
 
-
 RUN /venv/bin/pip install semgrep 
 
 RUN curl -s -L https://github.com/dependency-check/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip -o /security/dependency-check.zip && unzip -q /security/dependency-check.zip -d /security/ 

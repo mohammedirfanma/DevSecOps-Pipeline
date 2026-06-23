@@ -2,22 +2,21 @@ pipeline {
   agent {        
     dockerfile {
         filename 'Dockerfile.SecOps'
-        // CRITICAL: Mounts the underlying master workspace (holding your upload) directly into the container
-        reuseNode true 
+        reuseNode true
     }
   }
   parameters {
-      // Reverted to native 'file' parameter since base64File is missing on your server
-      file(name: 'source.zip', description: 'Upload your source zip file')
+      // FIX 1: Use the newly unlocked stashedFile parameter type
+      stashedFile name: 'source.zip', description: 'Upload your source zip file'
       string(name: 'project_name', defaultValue: 'noname', description: '(Required) Provide a name for the project (no spaces in file-name)')
   }
   stages {
     stage('Initialize') {
       steps {
           script {
-            // WORKAROUND: Expressly fetch the native file from the master cache directory
-            // This copies it directly into the running Docker execution path workspace
-            sh "cp \${WORKSPACE}/../\${JOB_NAME##*/}/source.zip ./source.zip || true"     
+            // FIX 2: Unstash the uploaded parameter directly into your container's workspace
+            unstashParam 'source.zip'
+
             sh '''
               set +x
               pwd && ls -la

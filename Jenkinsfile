@@ -2,53 +2,58 @@ pipeline {
   agent {        
     dockerfile {
         filename 'Dockerfile.SecOps'
-        reuseNode true 
+        reuseNode true
     }
   }
   parameters {
-      file name: 'source.zip', description: 'Upload source zip file'
+      // FIX 1: Change 'file' to 'base64File' for declarative support
+      base64File name: 'source.zip', description: 'Upload your source zip file'
       string(name: 'project_name', defaultValue: 'noname', description: '(Required) Provide a name for the project (no spaces in file-name)')
   }
   stages {
-    stage('Initialize') { 
+    stage('Initialize') {
       steps {
-          script {
-            sh '''
-              set +x
-              pwd && ls -la
-              cat /etc/*release >> agent-info.md
-              datetime=`date +"%Y-%m-%dT%H:%M:%SZ"`
-              echo "$datetime" >> agent-info.md
-              mkdir -p archive
-              mv agent-info.md ./archive/agent-info.md
+          // FIX 2: Wrap execution in withFileParameter to physically materialize the zip file
+          withFileParameter('source.zip') {
+              script {
+                sh '''
+                  set +x
+                  pwd && ls -la
+                  cat /etc/*release >> agent-info.md
+                  datetime=`date +"%Y-%m-%dT%H:%M:%SZ"`
+                  echo "$datetime" >> agent-info.md
+                  mkdir archive
+                  mv agent-info.md ./archive/agent-info.md
 
-              if [ -z "${project_name}" ]; then
-                echo "No project name provided. Using: no-name-$datetime"
-                project_name="no-name-$datetime"
-              else
-                echo "Project Name: ${project_name}"
-              fi
-              echo "${project_name}">projectName.txt
+                  if [ -z "${project_name}" ]; then
+                    echo "No project name provided. Using: no-name-$datetime"
+                    project_name="no-name-$datetime"
+                  else
+                    echo "Project Name: ${project_name}"
+                  fi
+                  echo "${project_name}">projectName.txt
 
-              if [ -f "source.zip" ] && [ -s "source.zip" ]; then
-                echo 'Source zip found!'
-                echo false>skipScan.txt
-                mkdir code
-                unzip source.zip -d ./code/
-              else
-                echo 'No source zip found!'
-                echo true>skipScan.txt
-              fi
-            '''
-            
-            def skipScanFile = readFile(file: "./skipScan.txt")
-            def projectNameFile = readFile(file: "./projectName.txt")
+                  # This will now successfully evaluate to true!
+                  if [ -f "source.zip" ] && [ -s "source.zip" ]; then
+                    echo 'Source zip found!'
+                    echo false>skipScan.txt
+                    mkdir code
+                    unzip source.zip -d ./code/
+                  else
+                    echo 'No source zip found!'
+                    echo true>skipScan.txt
+                  fi
+                '''
+                
+                def skipScanFile = readFile(file: "./skipScan.txt")
+                def projectNameFile = readFile(file: "./projectName.txt")
 
-            skipScanFile = skipScanFile.trim()
-            projectNameFile = projectNameFile.trim()
+                skipScanFile = skipScanFile.trim()
+                projectNameFile = projectNameFile.trim()
 
-            env.skipScanEnv = skipScanFile
-            env.projectNameEnv = projectNameFile
+                env.skipScanEnv = skipScanFile
+                env.projectNameEnv = projectNameFile
+              }
           }
       }
     }

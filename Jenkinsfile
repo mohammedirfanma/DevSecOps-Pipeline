@@ -15,7 +15,7 @@ pipeline {
       steps {
           script {
             // FIX 2: Unstash the uploaded parameter directly into your container's workspace
-            unstashParam 'source.zip'
+            unstash 'source.zip'
 
             sh '''
               set +x

@@ -38,7 +38,7 @@ pipeline {
               if [ -f "source.zip" ] && [ -s "source.zip" ]; then
                 echo 'Source zip found!'
                 mkdir -p code
-                unzip source.zip -d ./code/ -y
+                unzip source.zip -y -d ./code/
               else
                 echo 'No source zip found!'
               fi
@@ -66,7 +66,7 @@ pipeline {
           set +x
           echo "Project: ${projectNameEnv}"
           echo "Running CLoC - v$(cloc --version)"
-          cloc --md --out='./archive/cloc.md' ./code -y
+          cloc --md --out='./archive/cloc.md' ./code
         '''
       }
     }

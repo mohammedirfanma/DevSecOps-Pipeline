@@ -37,12 +37,10 @@ pipeline {
               # This block will now successfully catch your uploaded file!
               if [ -f "source.zip" ] && [ -s "source.zip" ]; then
                 echo 'Source zip found!'
-                echo false>skipScan.txt
                 mkdir -p code
-                unzip source.zip -d ./code/
+                unzip source.zip -d ./code/ -y
               else
                 echo 'No source zip found!'
-                echo true>skipScan.txt
               fi
             '''
             

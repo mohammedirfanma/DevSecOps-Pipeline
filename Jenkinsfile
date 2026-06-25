@@ -38,7 +38,7 @@ pipeline {
               if [ -f "source.zip" ] && [ -s "source.zip" ]; then
                 echo 'Source zip found!'
                 mkdir -p code
-                unzip source.zip -d ./code/
+                unzip -o source.zip -d ./code/
               else
                 echo 'No source zip found!'
               fi

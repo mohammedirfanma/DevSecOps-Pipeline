@@ -67,8 +67,8 @@ pipeline {
         sh '''
           set +x
           echo "Project: ${projectNameEnv}"
-          echo "Running CLoC - v$(cloc.pl --version)"
-          cloc.pl --md --out='./archive/cloc.md' ./code
+          echo "Running CLoC - v$(cloc --version)"
+          cloc --md --out='./archive/cloc.md' ./code -y
         '''
       }
     }

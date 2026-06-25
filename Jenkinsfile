@@ -23,7 +23,7 @@ pipeline {
               cat /etc/*release >> agent-info.md
               datetime=`date +"%Y-%m-%dT%H:%M:%SZ"`
               echo "$datetime" >> agent-info.md
-              mkdir archive
+              mkdir -p archive
               mv agent-info.md ./archive/agent-info.md
 
               if [ -z "${project_name}" ]; then
@@ -38,7 +38,7 @@ pipeline {
               if [ -f "source.zip" ] && [ -s "source.zip" ]; then
                 echo 'Source zip found!'
                 echo false>skipScan.txt
-                mkdir code
+                mkdir -p code
                 unzip source.zip -d ./code/
               else
                 echo 'No source zip found!'

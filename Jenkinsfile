@@ -38,8 +38,11 @@ pipeline {
               if [ -f "source.zip" ] && [ -s "source.zip" ]; then
                 echo 'Source zip found!'
                 mkdir -p code
-                sh 'chmod -R 777 ./code'
-                unzip -o source.zip -d ./code/
+                chmod -R 777 ./code || true
+                chmod -R 777 ./insecure-bank-master || true
+                rm -rf ./code
+                rm -rf ./insecure-bank-master
+                unzip -o source.zip
               else
                 echo 'No source zip found!'
               fi

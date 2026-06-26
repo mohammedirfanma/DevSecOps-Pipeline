@@ -114,6 +114,7 @@ pipeline {
   }
   post {
     always {
+      sh 'sudo chown -R ubuntu:ubuntu ${WORKSPACE} || chmod -R 777 ${WORKSPACE} || true'
       archiveArtifacts artifacts: "**/*.md, *.md,  *.json",
           allowEmptyArchive: true,
           fingerprint: true,
